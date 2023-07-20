@@ -780,6 +780,105 @@ pub fn atomic_commit(
     Ok(())
 }
 
+/// Lease resources to another user.
+pub fn create_lease(
+    fd: RawFd,
+    objs: &[u32],
+    flags: u32,
+    lessee_id: Option<&mut u32>,
+    lessee_fd: Option<&mut RawFd>,
+) -> Result<drm_mode_create_lease, Error> {
+    let mut create_lease = drm_mode_create_lease {
+        object_ids: objs.as_ptr() as _,
+        object_count: objs.len() as _,
+        flags,
+        ..Default::default()
+    };
+
+    unsafe {
+        ioctl::mode::create_lease(fd, &mut create_lease)?;
+    }
+
+    if let Some(lessee_id) = lessee_id {
+        *lessee_id = create_lease.lessee_id;
+    }
+
+    if let Some(lessee_fd) = lessee_fd {
+        *lessee_fd = create_lease.fd as _;
+    }
+
+    Ok(create_lease)
+}
+
+/// List lessees from a DRM master.
+pub fn list_lessees(
+    fd: RawFd,
+    mut lessees: Option<&mut Vec<u32>>,
+) -> Result<drm_mode_list_lessees, Error> {
+    let mut sizes = Default::default();
+
+    unsafe {
+        ioctl::mode::list_lessees(fd, &mut sizes)?;
+    }
+
+    map_reserve!(lessees, sizes.count_lessees as usize);
+
+    let mut list_lessees = drm_mode_list_lessees {
+        count_lessees: map_len!(&lessees),
+        lessees_ptr: map_ptr!(&lessees),
+        ..Default::default()
+    };
+
+    unsafe {
+        ioctl::mode::list_lessees(fd, &mut list_lessees)?;
+    }
+    
+    map_set!(lessees, list_lessees.count_lessees as usize);
+
+    Ok(list_lessees)
+}
+
+/// Get leased DRM objects for a lessee.
+pub fn get_lease(
+    fd: RawFd,
+    mut objs: Option<&mut Vec<u32>>,
+) -> Result<drm_mode_get_lease, Error> {
+    let mut sizes = Default::default();
+
+    unsafe {
+        ioctl::mode::get_lease(fd, &mut sizes)?;
+    }
+
+    map_reserve!(objs, sizes.count_objects as usize);
+
+    let mut get_lease = drm_mode_get_lease {
+        count_objects: map_len!(&objs),
+        objects_ptr: map_ptr!(&objs),
+        ..Default::default()
+    };
+
+    unsafe {
+        ioctl::mode::get_lease(fd, &mut get_lease)?;
+    }
+
+    map_set!(objs, get_lease.count_objects as usize);
+
+    Ok(get_lease)
+}
+
+/// Revoke DRM lease.
+pub fn revoke_lease(fd: RawFd, lessee_id: u32) -> Result<(), Error> {
+    let revoke_lease = drm_mode_revoke_lease {
+        lessee_id,
+    };
+
+    unsafe {
+        ioctl::mode::revoke_lease(fd, &revoke_lease)?;
+    }
+
+    Ok(())
+}
+
 ///
 /// Dumbbuffers are basic buffers that can be used for scanout.
 ///

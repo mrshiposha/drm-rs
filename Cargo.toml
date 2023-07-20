@@ -17,11 +17,12 @@ drm-fourcc = "^2.2.0"
 [dependencies.nix]
 version = "0.26.0"
 default-features = false
-features = ["mman"]
+features = ["mman", "fs"]
 
 [dev-dependencies]
 image = { version = "^0.23.14", default-features = false, features = ["png"] }
 rustyline = "^8.0.0"
+passfd = "0.1.6"
 
 [features]
 use_bindgen = ["drm-ffi/use_bindgen"]

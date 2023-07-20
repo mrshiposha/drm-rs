@@ -44,6 +44,8 @@ pub mod plane;
 
 pub mod property;
 
+pub mod lease;
+
 use self::dumbbuffer::*;
 use buffer;
 
@@ -752,6 +754,58 @@ pub trait Device: super::Device {
         )
     }
 
+    /// Lease resources to another user.
+    fn create_lease(
+        &self,
+        objs: &[RawResourceHandle],
+        flags: nix::fcntl::OFlag
+    ) -> Result<DrmLeaseCreateResult, SystemError> {
+        let mut lessee_fd = 0;
+        let mut lessee_id = 0;
+
+        drm_ffi::mode::create_lease(
+            self.as_fd().as_raw_fd(),
+            unsafe { &*(&*objs as * const _ as * const [u32]) },
+            flags.bits() as _,
+            Some(&mut lessee_id),
+            Some(&mut lessee_fd)
+        )?;
+
+        Ok(DrmLeaseCreateResult {
+            fd: lessee_fd,
+            lessee_id: lessee_id.into(),
+        })
+    }
+
+    /// List lessees from a DRM master.
+    fn list_lessees(&self) -> Result<Vec<lease::LesseeId>, SystemError> {
+        let mut lessees = Vec::new();
+
+        drm_ffi::mode::list_lessees(self.as_fd().as_raw_fd(), Some(&mut lessees))?;
+
+        unsafe {
+            Ok(transmute_vec(lessees))
+        }
+    }
+
+    /// Return the list of leased objects for the lessee.
+    /// 
+    /// Note: if the lessee is the owner, then it can use all objects.
+    fn get_lease(&self) -> Result<Vec<RawResourceHandle>, SystemError> {
+        let mut objs = Vec::new();
+
+        drm_ffi::mode::get_lease(self.as_fd().as_raw_fd(), Some(&mut objs))?;
+
+        unsafe {
+            Ok(transmute_vec_from_u32(objs))
+        }
+    }
+
+    /// Revoke DRM lease.
+    fn revoke_lease(&self, lessee: lease::LesseeId) -> Result<(), SystemError> {
+        drm_ffi::mode::revoke_lease(self.as_fd().as_raw_fd(), lessee.into())
+    }
+
     /// Convert a prime file descriptor to a GEM buffer handle
     fn prime_fd_to_buffer(&self, fd: RawFd) -> Result<buffer::Handle, SystemError> {
         let info = ffi::gem::fd_to_handle(self.as_fd().as_raw_fd(), fd)?;
@@ -1268,4 +1322,13 @@ bitflags::bitflags! {
         /// witout being aware that this could be triggering a lengthy modeset.
         const ATOMIC = ffi::DRM_MODE_PROP_ATOMIC;
     }
+}
+
+/// The result of a DRM Lease creation.
+pub struct DrmLeaseCreateResult {
+    /// The `fd` of the DRM "device" represents the lent resources
+    pub fd: RawFd,
+
+    /// Identifier of the lease.
+    pub lessee_id: lease::LesseeId,
 }

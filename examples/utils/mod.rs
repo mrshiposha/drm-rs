@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use std::os::unix::prelude::FromRawFd;
+use std::os::unix::prelude::RawFd;
+
 pub use drm::control::Device as ControlDevice;
 pub use drm::Device;
 
@@ -29,6 +32,10 @@ impl Card {
         options.read(true);
         options.write(true);
         Card(options.open(path).unwrap())
+    }
+
+    pub unsafe fn open_fd(fd: RawFd) -> Self {
+        Card(std::fs::File::from_raw_fd(fd))
     }
 
     pub fn open_global() -> Self {
