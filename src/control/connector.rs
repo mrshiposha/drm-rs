@@ -192,6 +192,34 @@ impl From<u32> for Interface {
     }
 }
 
+impl From<&[u8]> for Interface {
+    fn from(value: &[u8]) -> Self {
+        match value {
+            b"VGA" => Interface::VGA,
+            b"DVI-I" => Interface::DVII,
+            b"DVI-D" => Interface::DVID,
+            b"DVI-A" => Interface::DVIA,
+            b"Composite" => Interface::Composite,
+            b"SVIDEO" => Interface::SVideo,
+            b"LVDS" => Interface::LVDS,
+            b"Component" => Interface::Component,
+            b"DIN" => Interface::NinePinDIN,
+            b"DP" => Interface::DisplayPort,
+            b"HDMI-A" => Interface::HDMIA,
+            b"HDMI-B" => Interface::HDMIB,
+            b"TV" => Interface::TV,
+            b"eDP" => Interface::EmbeddedDisplayPort,
+            b"Virtual" => Interface::Virtual,
+            b"DSI" => Interface::DSI,
+            b"DPI" => Interface::DPI,
+            b"Writeback" => Interface::Writeback,
+            b"SPI" => Interface::SPI,
+            b"USB" => Interface::USB,
+            _ => Interface::Unknown,
+        }
+    }
+}
+
 impl From<Interface> for u32 {
     fn from(interface: Interface) -> Self {
         match interface {
