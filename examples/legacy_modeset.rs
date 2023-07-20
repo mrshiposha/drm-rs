@@ -41,6 +41,7 @@ pub fn main() {
 
     // Find a crtc and FB
     let crtc = crtcinfo.get(0).expect("No crtcs found");
+    let old_fd = crtc.framebuffer().expect("framebuffer not found");
 
     // Select the pixel format
     let fmt = DrmFourcc::Xrgb8888;
@@ -81,4 +82,7 @@ pub fn main() {
 
     card.destroy_framebuffer(fb).unwrap();
     card.destroy_dumb_buffer(db).unwrap();
+
+    card.set_crtc(crtc.handle(), Some(old_fd), (0, 0), &[con.handle()], Some(mode))
+        .expect("Could not set CRTC");
 }
